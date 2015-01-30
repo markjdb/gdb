@@ -148,13 +148,35 @@ _initialize_i386fbsd_nat (void)
   /* Support debugging kernel virtual memory images.  */
   bsd_kvm_add_target (i386fbsd_supply_pcb);
 
+#ifdef KERN_PROC_SIGTRAMP
+  /* Newer versions of FreeBSD provide a kern.proc.sigtramp.<pid>
+     sysctl that returns the location of the signal trampoline.
+     Note that this fetches the address for the current (gdb) process.
+     This should be correct for any other 64-bit processes, but probably
+     not for a 32-bit process. */
+  {
+    int mib[4];
+    struct kinfo_sigtramp kst;
+    size_t len;
+
+    mib[0] = CTL_KERN;
+    mib[1] = KERN_PROC;
+    mib[2] = KERN_PROC_SIGTRAMP;
+    mib[3] = getpid();
+    len = sizeof (kst);
+    if (sysctl (mib, 4, &kst, &len, NULL, 0) == 0)
+      {
+	i386fbsd_sigtramp_start_addr = kst.ksigtramp_start;
+	i386fbsd_sigtramp_end_addr = kst.ksigtramp_end;
+      }
+  }
+#elif defined(KERN_PS_STRINGS)
   /* FreeBSD provides a kern.ps_strings sysctl that we can use to
      locate the sigtramp.  That way we can still recognize a sigtramp
      if its location is changed in a new kernel.  Of course this is
      still based on the assumption that the sigtramp is placed
      directly under the location where the program arguments and
      environment can be found.  */
-#ifdef KERN_PS_STRINGS
   {
     int mib[2];
     u_long ps_strings;
