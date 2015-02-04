@@ -26,6 +26,7 @@
 #include <sys/types.h>
 #include <sys/ptrace.h>
 #include <sys/sysctl.h>
+#include <sys/user.h>
 #include <machine/reg.h>
 
 #include "fbsd-nat.h"
@@ -262,8 +263,8 @@ Please report this to <bug-gdb@gnu.org>."),
     len = sizeof (kst);
     if (sysctl (mib, 4, &kst, &len, NULL, 0) == 0)
       {
-	amd64fbsd_sigtramp_start_addr = kst.ksigtramp_start;
-	amd64fbsd_sigtramp_end_addr = kst.ksigtramp_end;
+	amd64fbsd_sigtramp_start_addr = (uintptr_t)kst.ksigtramp_start;
+	amd64fbsd_sigtramp_end_addr = (uintptr_t)kst.ksigtramp_end;
       }
   }
 #else
