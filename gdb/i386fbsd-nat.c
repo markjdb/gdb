@@ -25,6 +25,7 @@
 #include <sys/types.h>
 #include <sys/ptrace.h>
 #include <sys/sysctl.h>
+#include <sys/user.h>
 
 #include "fbsd-nat.h"
 #include "i386-tdep.h"
@@ -166,8 +167,8 @@ _initialize_i386fbsd_nat (void)
     len = sizeof (kst);
     if (sysctl (mib, 4, &kst, &len, NULL, 0) == 0)
       {
-	i386fbsd_sigtramp_start_addr = kst.ksigtramp_start;
-	i386fbsd_sigtramp_end_addr = kst.ksigtramp_end;
+	i386fbsd_sigtramp_start_addr = (uintptr_t)kst.ksigtramp_start;
+	i386fbsd_sigtramp_end_addr = (uintptr_t)kst.ksigtramp_end;
       }
   }
 #elif defined(KERN_PS_STRINGS)
