@@ -1299,7 +1299,7 @@ arm_linux_syscall_record (struct regcache *regcache, unsigned long svc_number)
 
   syscall_gdb = arm_canonicalize_syscall (svc_number);
 
-  if (syscall_gdb < 0)
+  if (syscall_gdb == (enum gdb_syscall)-1)
     {
       printf_unfiltered (_("Process record and replay target doesn't "
                            "support syscall number %s\n"),

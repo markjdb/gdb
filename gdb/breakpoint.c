@@ -6559,7 +6559,8 @@ breakpoint_address_bits (struct breakpoint *b)
 
       /* Software watchpoints that aren't watching memory don't have
 	 an address to print.  */
-      if (b->type == bp_watchpoint && loc->watchpoint_type == -1)
+      if (b->type == bp_watchpoint && loc->watchpoint_type ==
+	  (enum target_hw_bp_type)-1)
 	continue;
 
       addr_bit = gdbarch_addr_bit (loc->gdbarch);
