@@ -249,8 +249,8 @@ Please report this to <bug-gdb@gnu.org>."),
   /* Newer versions of FreeBSD provide a kern.proc.sigtramp.<pid>
      sysctl that returns the location of the signal trampoline.
      Note that this fetches the address for the current (gdb) process.
-     This should be correct for any other 64-bit processes, but probably
-     not for a 32-bit process. */
+     This will be correct for other 64-bit processes, but the signal
+     trampoline location is not properly set for 32-bit processes. */
   {
     int mib[4];
     struct kinfo_sigtramp kst;

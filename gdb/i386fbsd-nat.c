@@ -152,9 +152,8 @@ _initialize_i386fbsd_nat (void)
 #ifdef KERN_PROC_SIGTRAMP
   /* Newer versions of FreeBSD provide a kern.proc.sigtramp.<pid>
      sysctl that returns the location of the signal trampoline.
-     Note that this fetches the address for the current (gdb) process.
-     This should be correct for any other 64-bit processes, but probably
-     not for a 32-bit process. */
+     Note that this fetches the address for the current (gdb) process,
+     but should be correct for other processes. */
   {
     int mib[4];
     struct kinfo_sigtramp kst;
