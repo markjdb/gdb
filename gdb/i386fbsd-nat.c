@@ -150,10 +150,10 @@ _initialize_i386fbsd_nat (void)
   bsd_kvm_add_target (i386fbsd_supply_pcb);
 
 #ifdef KERN_PROC_SIGTRAMP
-  /* Newer versions of FreeBSD provide a kern.proc.sigtramp.<pid>
+  /* FreeBSD 9.2 and later provide a kern.proc.sigtramp.<pid>
      sysctl that returns the location of the signal trampoline.
      Note that this fetches the address for the current (gdb) process,
-     but should be correct for other processes. */
+     but should be correct for other processes.  */
   {
     int mib[4];
     struct kinfo_sigtramp kst;
@@ -162,12 +162,12 @@ _initialize_i386fbsd_nat (void)
     mib[0] = CTL_KERN;
     mib[1] = KERN_PROC;
     mib[2] = KERN_PROC_SIGTRAMP;
-    mib[3] = getpid();
+    mib[3] = getpid ();
     len = sizeof (kst);
     if (sysctl (mib, 4, &kst, &len, NULL, 0) == 0)
       {
-	i386fbsd_sigtramp_start_addr = (uintptr_t)kst.ksigtramp_start;
-	i386fbsd_sigtramp_end_addr = (uintptr_t)kst.ksigtramp_end;
+	i386fbsd_sigtramp_start_addr = (uintptr_t) kst.ksigtramp_start;
+	i386fbsd_sigtramp_end_addr = (uintptr_t) kst.ksigtramp_end;
       }
   }
 #elif defined(KERN_PS_STRINGS)
