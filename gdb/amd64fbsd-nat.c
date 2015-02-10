@@ -246,11 +246,11 @@ Please report this to <bug-gdb@gnu.org>."),
   SC_RBP_OFFSET = offset;
 
 #ifdef KERN_PROC_SIGTRAMP
-  /* Newer versions of FreeBSD provide a kern.proc.sigtramp.<pid>
+  /* FreeBSD 9.2 and later provide a kern.proc.sigtramp.<pid>
      sysctl that returns the location of the signal trampoline.
      Note that this fetches the address for the current (gdb) process.
      This will be correct for other 64-bit processes, but the signal
-     trampoline location is not properly set for 32-bit processes. */
+     trampoline location is not properly set for 32-bit processes.  */
   {
     int mib[4];
     struct kinfo_sigtramp kst;
@@ -259,12 +259,12 @@ Please report this to <bug-gdb@gnu.org>."),
     mib[0] = CTL_KERN;
     mib[1] = KERN_PROC;
     mib[2] = KERN_PROC_SIGTRAMP;
-    mib[3] = getpid();
+    mib[3] = getpid ();
     len = sizeof (kst);
     if (sysctl (mib, 4, &kst, &len, NULL, 0) == 0)
       {
-	amd64fbsd_sigtramp_start_addr = (uintptr_t)kst.ksigtramp_start;
-	amd64fbsd_sigtramp_end_addr = (uintptr_t)kst.ksigtramp_end;
+	amd64fbsd_sigtramp_start_addr = (uintptr_t) kst.ksigtramp_start;
+	amd64fbsd_sigtramp_end_addr = (uintptr_t) kst.ksigtramp_end;
       }
   }
 #else
