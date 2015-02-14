@@ -191,8 +191,8 @@ static int i386fbsd_r_reg_offset[] =
 };
 
 /* Sigtramp routine location.  */
-CORE_ADDR i386fbsd_sigtramp_start_addr = 0xbfbfdf20;
-CORE_ADDR i386fbsd_sigtramp_end_addr = 0xbfbfdff0;
+CORE_ADDR i386fbsd_sigtramp_start_addr;
+CORE_ADDR i386fbsd_sigtramp_end_addr;
 
 /* From <machine/signal.h>.  */
 int i386fbsd_sc_reg_offset[] =

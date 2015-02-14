@@ -150,10 +150,13 @@ _initialize_i386fbsd_nat (void)
   bsd_kvm_add_target (i386fbsd_supply_pcb);
 
 #ifdef KERN_PROC_SIGTRAMP
-  /* FreeBSD 9.2 and later provide a kern.proc.sigtramp.<pid>
-     sysctl that returns the location of the signal trampoline.
-     Note that this fetches the address for the current (gdb) process,
-     but should be correct for other processes.  */
+  /* Normally signal frames are detected via i386fbsd_sigtramp_p ().
+     However, FreeBSD 9.2 through 10.1 do not include the page holding
+     the signal code in core dumps.  These releases do provide a
+     kern.proc.sigtramp.<pid> sysctl that returns the location of the
+     signal trampoline for a running process.  We fetch the location of
+     the current (gdb) process and use this to identify signal frames
+     in core dumps from these releases.  */
   {
     int mib[4];
     struct kinfo_sigtramp kst;
@@ -168,27 +171,6 @@ _initialize_i386fbsd_nat (void)
       {
 	i386fbsd_sigtramp_start_addr = (uintptr_t) kst.ksigtramp_start;
 	i386fbsd_sigtramp_end_addr = (uintptr_t) kst.ksigtramp_end;
-      }
-  }
-#elif defined(KERN_PS_STRINGS)
-  /* FreeBSD provides a kern.ps_strings sysctl that we can use to
-     locate the sigtramp.  That way we can still recognize a sigtramp
-     if its location is changed in a new kernel.  Of course this is
-     still based on the assumption that the sigtramp is placed
-     directly under the location where the program arguments and
-     environment can be found.  */
-  {
-    int mib[2];
-    u_long ps_strings;
-    size_t len;
-
-    mib[0] = CTL_KERN;
-    mib[1] = KERN_PS_STRINGS;
-    len = sizeof (ps_strings);
-    if (sysctl (mib, 2, &ps_strings, &len, NULL, 0) == 0)
-      {
-	i386fbsd_sigtramp_start_addr = ps_strings - 128;
-	i386fbsd_sigtramp_end_addr = ps_strings;
       }
   }
 #endif
