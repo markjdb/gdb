@@ -87,9 +87,9 @@ fbsd_read_mapping (FILE *mapfile, unsigned long *start, unsigned long *end,
    calling FUNC for each memory region.  OBFD is passed as the last
    argument to FUNC.  */
 
-int
-fbsd_find_memory_regions (struct target_ops *self,
-			  find_memory_region_ftype func, void *obfd)
+static int
+fbsd_find_memory_regions_procfs (struct target_ops *self,
+				 find_memory_region_ftype func, void *obfd)
 {
   pid_t pid = ptid_get_pid (inferior_ptid);
   char *mapfilename;
@@ -136,4 +136,52 @@ fbsd_find_memory_regions (struct target_ops *self,
 
   do_cleanups (cleanup);
   return 0;
+}
+
+int
+fbsd_find_memory_regions (struct target_ops *self,
+			  find_memory_region_ftype func, void *obfd)
+{
+#ifdef PT_VM_ENTRY
+  pid_t pid = ptid_get_pid (inferior_ptid);
+  struct ptrace_vm_entry pve;
+  unsigned long size;
+
+  pve.pve_entry = 0;
+  for (;;)
+    {
+      pve.pve_path = NULL;
+      pve.pve_pathlen = 0;
+      if (ptrace (PT_VM_ENTRY, pid, (PTRACE_TYPE_ARG3) &pve, 0) == -1)
+	{
+	  /* If the first attempt fails, fall back to using procfs.  */
+	  if (pve.pve_entry == 0)
+	    return fbsd_find_memory_regions_procfs (self, func, obfd);
+
+	  /* ENOENT marks the end of the iteration. */
+	  if (errno == ENOENT)
+	    return 0;
+	  perror_with_name (_("Couldn't fetch VM map entry."));
+	}
+
+      size = pve.pve_end - pve.pve_start + 1;
+      if (info_verbose)
+	{
+	  fprintf_filtered (gdb_stdout, 
+			    "Save segment, %ld bytes at %s (%c%c%c)\n",
+			    size, paddress (target_gdbarch (), pve.pve_start),
+			    pve.pve_prot & PROT_READ ? 'r' : '-',
+			    pve.pve_prot & PROT_WRITE ? 'w' : '-',
+			    pve.pve_prot & PROT_EXEC ? 'x' : '-');
+	}
+
+      /* Invoke the callback function to create the corefile segment.
+	 Pass MODIFIED as true, we do not know the real modification state.  */
+      func (pve.pve_start, size, pve.pve_prot & PROT_READ, pve.pve_prot & PROT_WRITE,
+	    pve.pve_prot & PROT_EXEC, 1, obfd);
+    }
+  return 0;
+#else
+  fbsd_find_memory_regions_procfs (self, func, obfd);
+#endif
 }
