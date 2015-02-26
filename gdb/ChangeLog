@@ -1,3 +1,11 @@
+2015-xx-xx  John Baldwin <jhb@FreeBSD.org>
+
+	* configure.ac: AC_CHECK_LIB(util, kinfo_getvmmap).
+	* configure: Regenerate.
+	* config.in: Regenerate.
+	* fbsd-nat.c (fbsd_find_memory_regions): Use kinfo_getvmmap to
+	enumerate memory regions if present.
+
 2015-01-29  Doug Evans  <dje@google.com>
 
 	PR symtab/17890
