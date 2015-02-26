@@ -27,6 +27,7 @@
 #include <sys/procfs.h>
 #include <sys/sysctl.h>
 #ifdef HAVE_KINFO_GETVMMAP
+#include <sys/user.h>
 #include <libutil.h>
 #endif
 
@@ -65,6 +66,7 @@ fbsd_pid_to_exec_file (struct target_ops *self, int pid)
   return NULL;
 }
 
+#ifndef HAVE_KINFO_GETVMMAP
 static int
 fbsd_read_mapping (FILE *mapfile, unsigned long *start, unsigned long *end,
 		   char *protection)
@@ -85,6 +87,7 @@ fbsd_read_mapping (FILE *mapfile, unsigned long *start, unsigned long *end,
 
   return (ret != 0 && ret != EOF);
 }
+#endif
 
 /* Iterate over all the memory regions in the current inferior,
    calling FUNC for each memory region.  OBFD is passed as the last
@@ -122,23 +125,23 @@ fbsd_find_memory_regions (struct target_ops *self,
 	  kve->kve_type != KVME_TYPE_PHYS)
 	continue;
 
-      size = kve->kve_end - kve->kve_start + 1;
+      size = kve->kve_end - kve->kve_start;
       if (info_verbose)
 	{
 	  fprintf_filtered (gdb_stdout, 
 			    "Save segment, %ld bytes at %s (%c%c%c)\n",
 			    (long)size,
 			    paddress (target_gdbarch (), kve->kve_start),
-			    kve->kve_protection & KMVE_PROT_READ ? 'r' : '-',
-			    kve->kve_protection & KMVE_PROT_WRITE ? 'w' : '-',
-			    kve->kve_protection & KMVE_PROT_EXEC ? 'x' : '-');
+			    kve->kve_protection & KVME_PROT_READ ? 'r' : '-',
+			    kve->kve_protection & KVME_PROT_WRITE ? 'w' : '-',
+			    kve->kve_protection & KVME_PROT_EXEC ? 'x' : '-');
 	}
 
       /* Invoke the callback function to create the corefile segment.
 	 Pass MODIFIED as true, we do not know the real modification state.  */
-      func (kve->kve_start, size, kve->kve_protection & KMVE_PROT_READ,
-	    kve->kve_protection & KMVE_PROT_WRITE,
-	    kve->kve_protection & KMVE_PROT_EXEC, 1, obfd);
+      func (kve->kve_start, size, kve->kve_protection & KVME_PROT_READ,
+	    kve->kve_protection & KVME_PROT_WRITE,
+	    kve->kve_protection & KVME_PROT_EXEC, 1, obfd);
     }
   do_cleanups (cleanup);
   return 0;
