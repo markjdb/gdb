@@ -1,3 +1,9 @@
+2016-01-18  John Baldwin  <jhb@FreeBSD.org>
+
+	* configure.ac: Include <sys/types.h when checking for "r_fs" in
+	"struct reg".
+	* configure: Regenerate.
+
 2016-01-15  Sandra Loosemore  <sandra@codesourcery.com>
 
 	* charset.c [PHONY_ICONV] (GDB_DEFAULT_HOST_CHARSET):
