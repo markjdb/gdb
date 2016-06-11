@@ -1,3 +1,10 @@
+2016-06-15  John Baldwin  <jhb@FreeBSD.org>
+
+	* fbsd-nat.c [KERN_PROC_AUXV] New variable super_xfer_partial.
+	(fbsd_xfer_partial): New function.
+	(fbsd_nat_add_target) [KERN_PROC_AUXV] Set "to_xfer_partial" to
+	"fbsd_xfer_partial".
+
 2016-06-14  John Baldwin  <jhb@FreeBSD.org>
 
 	* v850-tdep.c (v850_use_struct_convention): Trim type length checks.
