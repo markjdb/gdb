@@ -328,6 +328,7 @@ struct gdbarch
   gdbarch_insn_is_ret_ftype *insn_is_ret;
   gdbarch_insn_is_jump_ftype *insn_is_jump;
   gdbarch_auxv_parse_ftype *auxv_parse;
+  gdbarch_print_auxv_ftype *print_auxv;
   gdbarch_vsyscall_range_ftype *vsyscall_range;
   gdbarch_infcall_mmap_ftype *infcall_mmap;
   gdbarch_infcall_munmap_ftype *infcall_munmap;
@@ -678,6 +679,7 @@ verify_gdbarch (struct gdbarch *gdbarch)
   /* Skip verify of insn_is_ret, invalid_p == 0 */
   /* Skip verify of insn_is_jump, invalid_p == 0 */
   /* Skip verify of auxv_parse, has predicate.  */
+  /* Skip verify of print_auxv, has predicate.  */
   /* Skip verify of vsyscall_range, invalid_p == 0 */
   /* Skip verify of infcall_mmap, invalid_p == 0 */
   /* Skip verify of infcall_munmap, invalid_p == 0 */
@@ -1166,6 +1168,12 @@ gdbarch_dump (struct gdbarch *gdbarch, struct ui_file *file)
   fprintf_unfiltered (file,
                       "gdbarch_dump: pointer_to_address = <%s>\n",
                       host_address_to_string (gdbarch->pointer_to_address));
+  fprintf_unfiltered (file,
+                      "gdbarch_dump: gdbarch_print_auxv_p() = %d\n",
+                      gdbarch_print_auxv_p (gdbarch));
+  fprintf_unfiltered (file,
+                      "gdbarch_dump: print_auxv = <%s>\n",
+                      host_address_to_string (gdbarch->print_auxv));
   fprintf_unfiltered (file,
                       "gdbarch_dump: print_float_info = <%s>\n",
                       host_address_to_string (gdbarch->print_float_info));
@@ -4767,6 +4775,30 @@ set_gdbarch_auxv_parse (struct gdbarch *gdbarch,
                         gdbarch_auxv_parse_ftype auxv_parse)
 {
   gdbarch->auxv_parse = auxv_parse;
+}
+
+int
+gdbarch_print_auxv_p (struct gdbarch *gdbarch)
+{
+  gdb_assert (gdbarch != NULL);
+  return gdbarch->print_auxv != NULL;
+}
+
+int
+gdbarch_print_auxv (struct gdbarch *gdbarch, struct ui_file *file, CORE_ADDR type, CORE_ADDR val)
+{
+  gdb_assert (gdbarch != NULL);
+  gdb_assert (gdbarch->print_auxv != NULL);
+  if (gdbarch_debug >= 2)
+    fprintf_unfiltered (gdb_stdlog, "gdbarch_print_auxv called\n");
+  return gdbarch->print_auxv (gdbarch, file, type, val);
+}
+
+void
+set_gdbarch_print_auxv (struct gdbarch *gdbarch,
+                        gdbarch_print_auxv_ftype print_auxv)
+{
+  gdbarch->print_auxv = print_auxv;
 }
 
 int

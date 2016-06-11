@@ -46,6 +46,14 @@ extern int target_auxv_parse (struct target_ops *ops,
 extern int target_auxv_search (struct target_ops *ops,
 			       CORE_ADDR match, CORE_ADDR *valp);
 
+/* Print a description of a single AUXV entry on the specified file.  */
+enum auxv_format { dec, hex, str };
+
+extern void fprint_single_auxv (struct ui_file *file, const char *name,
+				const char *description,
+				enum auxv_format flavor, CORE_ADDR type,
+				CORE_ADDR val);
+
 /* Print the contents of the target's AUXV on the specified file.  */
 extern int fprint_target_auxv (struct ui_file *file, struct target_ops *ops);
 

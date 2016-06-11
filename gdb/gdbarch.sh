@@ -1110,6 +1110,12 @@ m:int:insn_is_jump:CORE_ADDR addr:addr::default_insn_is_jump::0
 # Return 1 if an entry was read into *TYPEP and *VALP.
 M:int:auxv_parse:gdb_byte **readptr, gdb_byte *endptr, CORE_ADDR *typep, CORE_ADDR *valp:readptr, endptr, typep, valp
 
+# Print the description of a single auxv entry described by TYPE and VAL
+# to FILE.  Return 0 and output no description if the TYPE is unknown.
+# Return 0 if the TYPE of the auxv entry is unknown.
+# Return 1 if a description was output.
+M:int:print_auxv:struct ui_file *file, CORE_ADDR type, CORE_ADDR val:file, type, val
+
 # Find the address range of the current inferior's vsyscall/vDSO, and
 # write it to *RANGE.  If the vsyscall's length can't be determined, a
 # range with zero length is returned.  Returns true if the vsyscall is

@@ -1,5 +1,15 @@
 2016-06-15  John Baldwin  <jhb@FreeBSD.org>
 
+	* auxv.c (fprint_single_auxv): New function.
+	(default_print_auxv): New function.
+	(fprint_target_auxv): Use gdbarch_print_auxv and default_print_auxv.
+	* auxv.h (enum auxv_format): New enum.
+	(fprint_single_auxv): Declare.
+	* gdbarch.sh (print_auxv): New.
+	* gdbarch.c, gdbarch.h: Re-generated.
+
+2016-06-15  John Baldwin  <jhb@FreeBSD.org>
+
 	* fbsd-nat.c [KERN_PROC_AUXV] New variable super_xfer_partial.
 	(fbsd_xfer_partial): New function.
 	(fbsd_nat_add_target) [KERN_PROC_AUXV] Set "to_xfer_partial" to
