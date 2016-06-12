@@ -1,3 +1,13 @@
+2016-06-15  John Baldwin  <jhb@FreeBSD.org>
+
+	* elf.c (elfcore_grok_note): Remove handling of NT_X86_XSTATE for
+	FreeBSD.  Remove case for NT_FREEBSD_THRMISC.
+	(elfcore_grok_freebsd_psinfo): New function.
+	(elfcore_grok_freebsd_prstatus): New function.
+	(elfcore_grok_freebsd_note): New function.
+	(elf_parse_notes): Use "elfcore_grok_freebsd_note" for "FreeBSD"
+	notes.
+
 2016-06-15  H.J. Lu  <hongjiu.lu@intel.com>
 
 	* elf32-i386.c (elf_i386_check_relocs): Check SEC_ALLOC before
