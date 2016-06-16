@@ -18,6 +18,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "defs.h"
+#include "auxv.h"
 #include "gdbcore.h"
 #include "inferior.h"
 #include "regcache.h"
@@ -283,6 +284,37 @@ fbsd_make_corefile_notes (struct gdbarch *gdbarch, bfd *obfd, int *note_size)
   return note_data;
 }
 
+static int
+fbsd_print_auxv (struct gdbarch *gdbarch, struct ui_file *file, CORE_ADDR type,
+		 CORE_ADDR val)
+{
+  const char *name;
+  const char *description;
+  enum auxv_format flavor;
+
+  switch (type)
+    {
+#define _TAGNAME(tag) #tag
+#define TAGNAME(tag) _TAGNAME(AT_##tag)
+#define TAG(tag, text, kind) \
+      case AT_FREEBSD_##tag: name = TAGNAME(tag); description = text; flavor = kind; break
+      TAG (EXECPATH, _("Executable path"), str);
+      TAG (CANARY, _("Canary for SSP"), hex);
+      TAG (CANARYLEN, ("Length of the SSP canary"), dec);
+      TAG (OSRELDATE, _("OSRELDATE"), dec);
+      TAG (NCPUS, _("Number of CPUs"), dec);
+      TAG (PAGESIZES, _("Pagesizes"), hex);
+      TAG (PAGESIZESLEN, _("Number of pagesizes"), dec);
+      TAG (TIMEKEEP, _("Pointer to timehands"), hex);
+      TAG (STACKPROT, _("Initial stack protection"), hex);
+    default:
+      return (0);
+    }
+
+  fprint_single_auxv (file, name, description, flavor, type, val);
+  return (1);
+}
+
 /* To be called from GDB_OSABI_FREEBSD_ELF handlers. */
 
 void
@@ -291,4 +323,5 @@ fbsd_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
   set_gdbarch_core_pid_to_str (gdbarch, fbsd_core_pid_to_str);
   set_gdbarch_core_thread_name (gdbarch, fbsd_core_thread_name);
   set_gdbarch_make_corefile_notes (gdbarch, fbsd_make_corefile_notes);
+  set_gdbarch_print_auxv (gdbarch, fbsd_print_auxv);
 }

@@ -1,5 +1,11 @@
 2016-06-15  John Baldwin  <jhb@FreeBSD.org>
 
+	* fbsd-tdep.c: Include "auxv.h".
+	(fbsd_print_auxv): New function.
+	(fbsd_init_abi): Install gdbarch "print_auxv" method.
+
+2016-06-15  John Baldwin  <jhb@FreeBSD.org>
+
 	* auxv.c (fprint_single_auxv): New function.
 	(default_print_auxv): New function.
 	(fprint_target_auxv): Use gdbarch_print_auxv and default_print_auxv.
