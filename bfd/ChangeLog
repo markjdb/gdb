@@ -1,3 +1,8 @@
+2016-07-18  John Baldwin  <jhb@FreeBSD.org>
+
+	* elf.c (elfcore_grok_freebsd_psinfo): Check for minimum note size
+	and handle pr_pid if present.
+
 2016-07-15  Thomas Preud'homme  <thomas.preudhomme@arm.com>
 
 	* elf-bfd.h (elf_backend_filter_implib_symbols): Declare backend hook.
