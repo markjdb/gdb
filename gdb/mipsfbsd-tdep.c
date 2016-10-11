@@ -121,6 +121,66 @@ mipsfbsd_iterate_over_regset_sections (struct gdbarch *gdbarch,
       NULL, cb_data);
 }
 
+/* Shared library support.  */
+
+/* FreeBSD/mips uses a slightly different `struct link_map' than the
+   other FreeBSD platforms as it includes an additional `l_off'
+   member.  */
+
+static struct link_map_offsets *
+mipsfbsd_ilp32_fetch_link_map_offsets (void)
+{
+  static struct link_map_offsets lmo;
+  static struct link_map_offsets *lmp = NULL;
+
+  if (lmp == NULL) 
+    {
+      lmp = &lmo;
+
+      lmo.r_version_offset = 0;
+      lmo.r_version_size = 4;
+      lmo.r_map_offset = 4;
+      lmo.r_brk_offset = 8;
+      lmo.r_ldsomap_offset = -1;
+
+      lmo.link_map_size = 24;
+      lmo.l_addr_offset = 0;
+      lmo.l_name_offset = 8;
+      lmo.l_ld_offset = 12;
+      lmo.l_next_offset = 16;
+      lmo.l_prev_offset = 20;
+    }
+
+  return lmp;
+}
+
+static struct link_map_offsets *
+mipsfbsd_lp64_fetch_link_map_offsets (void)
+{
+  static struct link_map_offsets lmo;
+  static struct link_map_offsets *lmp = NULL;
+
+  if (lmp == NULL)
+    {
+      lmp = &lmo;
+
+      lmo.r_version_offset = 0;
+      lmo.r_version_size = 4;
+      lmo.r_map_offset = 8;
+      lmo.r_brk_offset = 16;
+      lmo.r_ldsomap_offset = -1;
+
+      lmo.link_map_size = 48;
+      lmo.l_addr_offset = 0;
+      lmo.l_name_offset = 16; 
+      lmo.l_ld_offset = 24;
+      lmo.l_next_offset = 32;
+      lmo.l_prev_offset = 40;
+    }
+
+  return lmp;
+}
+
 static void
 mipsfbsd_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
 {
@@ -134,17 +194,11 @@ mipsfbsd_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
   switch (abi)
     {
       case MIPS_ABI_O32:
-	set_solib_svr4_fetch_link_map_offsets
-	  (gdbarch, svr4_ilp32_fetch_link_map_offsets);
 	break;
       case MIPS_ABI_N32:
-	set_solib_svr4_fetch_link_map_offsets
-	  (gdbarch, svr4_ilp32_fetch_link_map_offsets);
 	/* Float formats similar to Linux? */
 	break;
-    case MIPS_ABI_N64:
-	set_solib_svr4_fetch_link_map_offsets
-	  (gdbarch, svr4_lp64_fetch_link_map_offsets);
+      case MIPS_ABI_N64:
 	/* Float formats similar to Linux? */
 	break;
     }
@@ -153,6 +207,12 @@ mipsfbsd_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
 
   set_gdbarch_iterate_over_regset_sections
     (gdbarch, mipsfbsd_iterate_over_regset_sections);
+
+  /* FreeBSD/mips has SVR4-style shared libraries.  */
+  set_solib_svr4_fetch_link_map_offsets
+    (gdbarch, (gdbarch_ptr_bit (gdbarch) == 32 ?
+	       mipsfbsd_ilp32_fetch_link_map_offsets :
+	       mipsfbsd_lp64_fetch_link_map_offsets));
 }
 
 
