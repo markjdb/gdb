@@ -1,0 +1,167 @@
+/* Target-dependent code for FreeBSD/mips.
+
+   Copyright (C) 2016 Free Software Foundation, Inc.
+
+   This file is part of GDB.
+
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation; either version 3 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+
+#include "defs.h"
+#include "regset.h"
+#include "osabi.h"
+
+#include "fbsd-tdep.h"
+#include "mips-tdep.h"
+
+#include "solib-svr4.h"
+
+/* TODO: Signal frame */
+
+/* Shorthand for some register numbers used below.  */
+#define MIPS_PC_REGNUM  MIPS_EMBED_PC_REGNUM
+#define MIPS_FP0_REGNUM MIPS_EMBED_FP0_REGNUM
+#define MIPS_FSR_REGNUM MIPS_EMBED_FP0_REGNUM + 32
+
+/* Core file support. */
+
+/* Number of registers in `struct reg' from <machine/reg.h>.  The
+   first 38 follow the standard MIPS layout.  The 39th holds
+   IC_INT_REG on RM7K and RM9K processors.  The 40th is a dummy for
+   padding.  */
+#define MIPSFBSD_NUM_GREGS	40
+
+/* Number of registers in `struct fpreg' from <machine/reg.h>.  The
+   first 32 hold floating point registers.  33 holds the FSR.  The
+   34th is a dummy for padding.  */
+#define MIPSFBSD_NUM_FPREGS	34
+
+/* Supply register REGNUM from the buffer specified by FPREGS and LEN
+   in the floating-point register set REGSET to register cache
+   REGCACHE.  If REGNUM is -1, do this for all registers in REGSET.  */
+
+static void
+mipsfbsd_supply_fpregset (const struct regset *regset,
+			  struct regcache *regcache,
+			  int regnum, const void *fpregs, size_t len)
+{
+  size_t regsize = mips_isa_regsize (get_regcache_arch (regcache));
+  const char *regs = (const char *) fpregs;
+  int i;
+
+  gdb_assert (len >= MIPSFBSD_NUM_FPREGS * regsize);
+
+  for (i = MIPS_FP0_REGNUM; i <= MIPS_FSR_REGNUM; i++)
+    {
+      if (regnum == i || regnum == -1)
+	regcache_raw_supply (regcache, i,
+			     regs + (i - MIPS_FP0_REGNUM) * regsize);
+    }
+}
+
+/* Supply register REGNUM from the buffer specified by GREGS and LEN
+   in the general-purpose register set REGSET to register cache
+   REGCACHE.  If REGNUM is -1, do this for all registers in REGSET.  */
+
+static void
+mipsfbsd_supply_gregset (const struct regset *regset,
+			 struct regcache *regcache, int regnum,
+			 const void *gregs, size_t len)
+{
+  size_t regsize = mips_isa_regsize (get_regcache_arch (regcache));
+  const char *regs = (const char *) gregs;
+  int i;
+
+  gdb_assert (len >= MIPSFBSD_NUM_GREGS * regsize);
+
+  for (i = 0; i <= MIPS_PC_REGNUM; i++)
+    {
+      if (regnum == i || regnum == -1)
+	regcache_raw_supply (regcache, i, regs + i * regsize);
+    }
+}
+
+/* FreeBSD/mips register sets.  */
+
+static const struct regset mipsfbsd_gregset =
+{
+  NULL,
+  mipsfbsd_supply_gregset,
+};
+
+static const struct regset mipsfbsd_fpregset =
+{
+  NULL,
+  mipsfbsd_supply_fpregset,
+};
+
+/* Iterate over core file register note sections.  */
+
+static void
+mipsfbsd_iterate_over_regset_sections (struct gdbarch *gdbarch,
+				       iterate_over_regset_sections_cb *cb,
+				       void *cb_data,
+				       const struct regcache *regcache)
+{
+  size_t regsize = mips_isa_regsize (gdbarch);
+
+  cb (".reg", MIPSFBSD_NUM_GREGS * regsize, &mipsfbsd_gregset,
+      NULL, cb_data);
+  cb (".reg2", MIPSFBSD_NUM_FPREGS * regsize, &mipsfbsd_fpregset,
+      NULL, cb_data);
+}
+
+static void
+mipsfbsd_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
+{
+  enum mips_abi abi = mips_abi (gdbarch);
+
+  /* Generic FreeBSD support. */
+  fbsd_init_abi (info, gdbarch);
+
+  set_gdbarch_software_single_step (gdbarch, mips_software_single_step);
+
+  switch (abi)
+    {
+      case MIPS_ABI_O32:
+	set_solib_svr4_fetch_link_map_offsets
+	  (gdbarch, svr4_ilp32_fetch_link_map_offsets);
+	break;
+      case MIPS_ABI_N32:
+	set_solib_svr4_fetch_link_map_offsets
+	  (gdbarch, svr4_ilp32_fetch_link_map_offsets);
+	/* Float formats similar to Linux? */
+	break;
+    case MIPS_ABI_N64:
+	set_solib_svr4_fetch_link_map_offsets
+	  (gdbarch, svr4_lp64_fetch_link_map_offsets);
+	/* Float formats similar to Linux? */
+	break;
+    }
+
+  /* TODO: set_gdbarch_longjmp_target */
+
+  set_gdbarch_iterate_over_regset_sections
+    (gdbarch, mipsfbsd_iterate_over_regset_sections);
+}
+
+
+/* Provide a prototype to silence -Wmissing-prototypes.  */
+void _initialize_mipsfbsd_tdep (void);
+
+void
+_initialize_mipsfbsd_tdep (void)
+{
+  gdbarch_register_osabi (bfd_arch_mips, 0, GDB_OSABI_FREEBSD_ELF,
+			  mipsfbsd_init_abi);
+}
