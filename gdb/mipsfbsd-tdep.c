@@ -18,15 +18,15 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "defs.h"
-#include "regset.h"
 #include "osabi.h"
+#include "regset.h"
+#include "trad-frame.h"
+#include "tramp-frame.h"
 
 #include "fbsd-tdep.h"
 #include "mips-tdep.h"
 
 #include "solib-svr4.h"
-
-/* TODO: Signal frame */
 
 /* Shorthand for some register numbers used below.  */
 #define MIPS_PC_REGNUM  MIPS_EMBED_PC_REGNUM
@@ -121,6 +121,89 @@ mipsfbsd_iterate_over_regset_sections (struct gdbarch *gdbarch,
       NULL, cb_data);
 }
 
+/* Signal trampoline support.  */
+
+static void
+mips64fbsd_sigframe_init (const struct tramp_frame *self,
+			  struct frame_info *this_frame,
+			  struct trad_frame_cache *cache,
+			  CORE_ADDR func)
+{
+  struct gdbarch *gdbarch = get_frame_arch (this_frame);
+  enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
+  CORE_ADDR sp, ucontext_addr, addr;
+  int regnum;
+  gdb_byte buf[4];
+
+  /* We find the appropriate instance of `ucontext_t' at a
+     fixed offset in the signal frame.  */
+  sp = get_frame_register_signed (this_frame,
+				  MIPS_SP_REGNUM + gdbarch_num_regs (gdbarch));
+  ucontext_addr = sp + 32;
+
+  /* PC.  */
+  regnum = mips_regnum (gdbarch)->pc;
+  trad_frame_set_reg_addr (cache,
+			   regnum + gdbarch_num_regs (gdbarch),
+			    ucontext_addr + 24);
+
+  /* GPRs.  */
+  for (regnum = MIPS_AT_REGNUM, addr = ucontext_addr + 40;
+       regnum <= MIPS_RA_REGNUM; regnum++, addr += 8)
+    trad_frame_set_reg_addr (cache,
+			     regnum + gdbarch_num_regs (gdbarch),
+			     addr);
+
+  regnum = MIPS_PS_REGNUM;
+  trad_frame_set_reg_addr (cache,
+			   regnum + gdbarch_num_regs (gdbarch),
+			   ucontext_addr + 288);
+
+  /* HI and LO.  */
+  regnum = mips_regnum (gdbarch)->lo;
+  trad_frame_set_reg_addr (cache,
+			   regnum + gdbarch_num_regs (gdbarch),
+			   ucontext_addr + 296);
+  regnum = mips_regnum (gdbarch)->hi;
+  trad_frame_set_reg_addr (cache,
+			   regnum + gdbarch_num_regs (gdbarch),
+			   ucontext_addr + 304);
+
+  if (target_read_memory (ucontext_addr + 312, buf, 4) == 0 &&
+      extract_unsigned_integer (buf, 4, byte_order) != 0)
+    {
+      for (regnum = 0, addr = ucontext_addr + 320;
+	   regnum < 32; regnum++, addr += 8)
+	trad_frame_set_reg_addr (cache,
+				 regnum + gdbarch_fp0_regnum (gdbarch),
+				 addr);
+      trad_frame_set_reg_addr (cache, mips_regnum (gdbarch)->fp_control_status,
+			       addr);
+    }
+
+  regnum = mips_regnum (gdbarch)->cause;
+  trad_frame_set_reg_addr (cache,
+			   regnum + gdbarch_num_regs (gdbarch),
+			   ucontext_addr + 600);
+
+  trad_frame_set_id (cache, frame_id_build (sp, func));
+
+}
+
+static const struct tramp_frame mips64fbsd_sigframe =
+{
+  SIGTRAMP_FRAME,
+  MIPS_INSN32_SIZE,
+  {
+    { 0x67a40020, -1 },		/* daddiu  a0, sp, SIGF_UC */
+    { 0x240201a1, -1 },		/* li      v0, SYS_sigreturn */
+    { 0x0000000c, -1 },		/* syscall */
+    { 0x0000000d, -1 },		/* break */
+    { TRAMP_SENTINEL_INSN, -1 }
+  },
+  mips64fbsd_sigframe_init
+};
+
 /* Shared library support.  */
 
 /* FreeBSD/mips uses a slightly different `struct link_map' than the
@@ -200,6 +283,7 @@ mipsfbsd_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
 	break;
       case MIPS_ABI_N64:
 	/* Float formats similar to Linux? */
+	tramp_frame_prepend_unwinder (gdbarch, &mips64fbsd_sigframe);
 	break;
     }
 
