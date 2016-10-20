@@ -151,6 +151,81 @@ mipsfbsd_iterate_over_regset_sections (struct gdbarch *gdbarch,
 /* Signal trampoline support.  */
 
 static void
+mipsfbsd_sigframe_init (const struct tramp_frame *self,
+			  struct frame_info *this_frame,
+			  struct trad_frame_cache *cache,
+			  CORE_ADDR func)
+{
+  struct gdbarch *gdbarch = get_frame_arch (this_frame);
+  enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
+  CORE_ADDR sp, ucontext_addr, addr;
+  int regnum;
+  gdb_byte buf[4];
+
+  /* We find the appropriate instance of `ucontext_t' at a
+     fixed offset in the signal frame.  */
+  sp = get_frame_register_signed (this_frame,
+				  MIPS_SP_REGNUM + gdbarch_num_regs (gdbarch));
+  ucontext_addr = sp + 16;
+
+  /* PC.  */
+  regnum = mips_regnum (gdbarch)->pc;
+  trad_frame_set_reg_addr (cache,
+			   regnum + gdbarch_num_regs (gdbarch),
+			    ucontext_addr + 20);
+
+  /* GPRs.  */
+  for (regnum = MIPS_AT_REGNUM, addr = ucontext_addr + 28;
+       regnum <= MIPS_RA_REGNUM; regnum++, addr += 4)
+    trad_frame_set_reg_addr (cache,
+			     regnum + gdbarch_num_regs (gdbarch),
+			     addr);
+
+  regnum = MIPS_PS_REGNUM;
+  trad_frame_set_reg_addr (cache,
+			   regnum + gdbarch_num_regs (gdbarch),
+			   ucontext_addr + 152);
+
+  /* HI and LO.  */
+  regnum = mips_regnum (gdbarch)->lo;
+  trad_frame_set_reg_addr (cache,
+			   regnum + gdbarch_num_regs (gdbarch),
+			   ucontext_addr + 156);
+  regnum = mips_regnum (gdbarch)->hi;
+  trad_frame_set_reg_addr (cache,
+			   regnum + gdbarch_num_regs (gdbarch),
+			   ucontext_addr + 160);
+
+  if (target_read_memory (ucontext_addr + 164, buf, 4) == 0 &&
+      extract_unsigned_integer (buf, 4, byte_order) != 0)
+    {
+      for (regnum = 0, addr = ucontext_addr + 168;
+	   regnum < 32; regnum++, addr += 8)
+	trad_frame_set_reg_addr (cache,
+				 regnum + gdbarch_fp0_regnum (gdbarch),
+				 addr);
+      trad_frame_set_reg_addr (cache, mips_regnum (gdbarch)->fp_control_status,
+			       addr);
+    }
+
+  trad_frame_set_id (cache, frame_id_build (sp, func));
+}
+
+static const struct tramp_frame mipsfbsd_sigframe =
+{
+  SIGTRAMP_FRAME,
+  MIPS_INSN32_SIZE,
+  {
+    { 0x27a40010, -1 },		/* addiu  a0, sp, SIGF_UC */
+    { 0x240201a1, -1 },		/* li      v0, SYS_sigreturn */
+    { 0x0000000c, -1 },		/* syscall */
+    { 0x0000000d, -1 },		/* break */
+    { TRAMP_SENTINEL_INSN, -1 }
+  },
+  mipsfbsd_sigframe_init
+};
+
+static void
 mips64fbsd_sigframe_init (const struct tramp_frame *self,
 			  struct frame_info *this_frame,
 			  struct trad_frame_cache *cache,
@@ -208,13 +283,7 @@ mips64fbsd_sigframe_init (const struct tramp_frame *self,
 			       addr);
     }
 
-  regnum = mips_regnum (gdbarch)->cause;
-  trad_frame_set_reg_addr (cache,
-			   regnum + gdbarch_num_regs (gdbarch),
-			   ucontext_addr + 600);
-
   trad_frame_set_id (cache, frame_id_build (sp, func));
-
 }
 
 static const struct tramp_frame mips64fbsd_sigframe =
@@ -304,6 +373,7 @@ mipsfbsd_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
   switch (abi)
     {
       case MIPS_ABI_O32:
+	tramp_frame_prepend_unwinder (gdbarch, &mipsfbsd_sigframe);
 	break;
       case MIPS_ABI_N32:
 	set_gdbarch_long_double_bit (gdbarch, 128);
