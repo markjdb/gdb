@@ -55,7 +55,7 @@ mipsfbsd_supply_fpregset (const struct regset *regset,
 			  struct regcache *regcache,
 			  int regnum, const void *fpregs, size_t len)
 {
-  size_t regsize = mips_isa_regsize (get_regcache_arch (regcache));
+  size_t regsize = mips_abi_regsize (get_regcache_arch (regcache));
   const char *regs = (const char *) fpregs;
   int i;
 
@@ -78,7 +78,7 @@ mipsfbsd_supply_gregset (const struct regset *regset,
 			 struct regcache *regcache, int regnum,
 			 const void *gregs, size_t len)
 {
-  size_t regsize = mips_isa_regsize (get_regcache_arch (regcache));
+  size_t regsize = mips_abi_regsize (get_regcache_arch (regcache));
   const char *regs = (const char *) gregs;
   int i;
 
@@ -113,7 +113,7 @@ mipsfbsd_iterate_over_regset_sections (struct gdbarch *gdbarch,
 				       void *cb_data,
 				       const struct regcache *regcache)
 {
-  size_t regsize = mips_isa_regsize (gdbarch);
+  size_t regsize = mips_abi_regsize (gdbarch);
 
   cb (".reg", MIPSFBSD_NUM_GREGS * regsize, &mipsfbsd_gregset,
       NULL, cb_data);
