@@ -46,6 +46,33 @@
    34th is a dummy for padding.  */
 #define MIPSFBSD_NUM_FPREGS	34
 
+/* Supply a single register.  If the source register size matches the
+   size the regcache expects, this can use regcache_raw_supply().  If
+   they are different, this copies the source register into a buffer
+   that can be passed to regcache_raw_supply().  */
+
+static void
+mipsfbsd_supply_reg (struct regcache *regcache, int regnum, const void *addr,
+		     size_t len)
+{
+  struct gdbarch *gdbarch = get_regcache_arch (regcache);
+
+  if (register_size (gdbarch, regnum) == len)
+    {
+      regcache_raw_supply (regcache, regnum, addr);
+    }
+  else
+    {
+      enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
+      gdb_byte buf[MAX_REGISTER_SIZE];
+
+      store_signed_integer (buf, register_size (gdbarch, regnum), byte_order,
+			    extract_signed_integer ((const gdb_byte *) addr,
+						    len, byte_order));
+      regcache_raw_supply (regcache, regnum, buf);
+    }
+}
+
 /* Supply register REGNUM from the buffer specified by FPREGS and LEN
    in the floating-point register set REGSET to register cache
    REGCACHE.  If REGNUM is -1, do this for all registers in REGSET.  */
@@ -64,8 +91,8 @@ mipsfbsd_supply_fpregset (const struct regset *regset,
   for (i = MIPS_FP0_REGNUM; i <= MIPS_FSR_REGNUM; i++)
     {
       if (regnum == i || regnum == -1)
-	regcache_raw_supply (regcache, i,
-			     regs + (i - MIPS_FP0_REGNUM) * regsize);
+	mipsfbsd_supply_reg (regcache, i,
+			     regs + (i - MIPS_FP0_REGNUM) * regsize, regsize);
     }
 }
 
@@ -87,7 +114,7 @@ mipsfbsd_supply_gregset (const struct regset *regset,
   for (i = 0; i <= MIPS_PC_REGNUM; i++)
     {
       if (regnum == i || regnum == -1)
-	regcache_raw_supply (regcache, i, regs + i * regsize);
+	mipsfbsd_supply_reg (regcache, i, regs + i * regsize, regsize);
     }
 }
 
