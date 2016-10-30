@@ -25,6 +25,7 @@
 
 #include "fbsd-tdep.h"
 #include "mips-tdep.h"
+#include "mipsfbsd-tdep.h"
 
 #include "solib-svr4.h"
 
@@ -65,11 +66,115 @@ mipsfbsd_supply_reg (struct regcache *regcache, int regnum, const void *addr,
     {
       enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
       gdb_byte buf[MAX_REGISTER_SIZE];
+      LONGEST val;
 
+      val = extract_signed_integer ((const gdb_byte *) addr, len, byte_order);
       store_signed_integer (buf, register_size (gdbarch, regnum), byte_order,
-			    extract_signed_integer ((const gdb_byte *) addr,
-						    len, byte_order));
+			    val);
       regcache_raw_supply (regcache, regnum, buf);
+    }
+}
+
+/* Collect a single register.  If the destination register size
+   matches the size the regcache expects, this can use
+   regcache_raw_supply().  If they are different, this fetches the
+   register via regcache_raw_supply() into a buffer and then copies it
+   into the final destination.  */
+
+static void
+mipsfbsd_collect_reg (const struct regcache *regcache, int regnum, void *addr,
+		      size_t len)
+{
+  struct gdbarch *gdbarch = get_regcache_arch (regcache);
+
+  if (register_size (gdbarch, regnum) == len)
+    {
+      regcache_raw_collect (regcache, regnum, addr);
+    }
+  else
+    {
+      enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
+      gdb_byte buf[MAX_REGISTER_SIZE];
+      LONGEST val;
+
+      regcache_raw_collect (regcache, regnum, buf);
+      val = extract_signed_integer (buf, register_size (gdbarch, regnum),
+				    byte_order);
+      store_signed_integer ((gdb_byte *) addr, len, byte_order, val);
+    }
+}
+
+/* Supply the floating-point registers stored in FPREGS to REGCACHE.
+   Each floating-point register in FPREGS is REGSIZE bytes in
+   length.  */
+
+void
+mipsfbsd_supply_fpregs (struct regcache *regcache, int regnum,
+			const void *fpregs, size_t regsize)
+{
+  const char *regs = (const char *) fpregs;
+  int i;
+
+  for (i = MIPS_FP0_REGNUM; i <= MIPS_FSR_REGNUM; i++)
+    {
+      if (regnum == i || regnum == -1)
+	mipsfbsd_supply_reg (regcache, i,
+			     regs + (i - MIPS_FP0_REGNUM) * regsize, regsize);
+    }
+}
+
+/* Supply the general-purpose registers stored in GREGS to REGCACHE.
+   Each general-purpose register in GREGS is REGSIZE bytes in
+   length.  */
+
+void
+mipsfbsd_supply_gregs (struct regcache *regcache, int regnum,
+		       const void *gregs, size_t regsize)
+{
+  const char *regs = (const char *) gregs;
+  int i;
+
+  for (i = 0; i <= MIPS_PC_REGNUM; i++)
+    {
+      if (regnum == i || regnum == -1)
+	mipsfbsd_supply_reg (regcache, i, regs + i * regsize, regsize);
+    }
+}
+
+/* Collect the floating-point registers from REGCACHE and store them
+   in FPREGS.  Each floating-point register in FPREGS is REGSIZE bytes
+   in length.  */
+
+void
+mipsfbsd_collect_fpregs (const struct regcache *regcache, int regnum,
+			 void *fpregs, size_t regsize)
+{
+  char *regs = (char *) fpregs;
+  int i;
+
+  for (i = MIPS_FP0_REGNUM; i <= MIPS_FSR_REGNUM; i++)
+    {
+      if (regnum == i || regnum == -1)
+	mipsfbsd_collect_reg (regcache, i,
+			     regs + (i - MIPS_FP0_REGNUM) * regsize, regsize);
+    }
+}
+
+/* Collect the general-purpose registers from REGCACHE and store them
+   in GREGS.  Each general-purpose register in GREGS is REGSIZE bytes
+   in length.  */
+
+void
+mipsfbsd_collect_gregs (const struct regcache *regcache, int regnum,
+			void *gregs, size_t regsize)
+{
+  char *regs = (char *) gregs;
+  int i;
+
+  for (i = 0; i <= MIPS_PC_REGNUM; i++)
+    {
+      if (regnum == i || regnum == -1)
+	mipsfbsd_collect_reg (regcache, i, regs + i * regsize, regsize);
     }
 }
 
@@ -83,17 +188,27 @@ mipsfbsd_supply_fpregset (const struct regset *regset,
 			  int regnum, const void *fpregs, size_t len)
 {
   size_t regsize = mips_abi_regsize (get_regcache_arch (regcache));
-  const char *regs = (const char *) fpregs;
-  int i;
 
   gdb_assert (len >= MIPSFBSD_NUM_FPREGS * regsize);
 
-  for (i = MIPS_FP0_REGNUM; i <= MIPS_FSR_REGNUM; i++)
-    {
-      if (regnum == i || regnum == -1)
-	mipsfbsd_supply_reg (regcache, i,
-			     regs + (i - MIPS_FP0_REGNUM) * regsize, regsize);
-    }
+  mipsfbsd_supply_fpregs (regcache, regnum, fpregs, regsize);
+}
+
+/* Collect register REGNUM from the register cache REGCACHE and store
+   it in the buffer specified by FPREGS and LEN in the floating-point
+   register set REGSET.  If REGNUM is -1, do this for all registers in
+   REGSET.  */
+
+static void
+mipsfbsd_collect_fpregset (const struct regset *regset,
+			   const struct regcache *regcache,
+			   int regnum, void *fpregs, size_t len)
+{
+  size_t regsize = mips_abi_regsize (get_regcache_arch (regcache));
+
+  gdb_assert (len >= MIPSFBSD_NUM_FPREGS * regsize);
+
+  mipsfbsd_collect_fpregs (regcache, regnum, fpregs, regsize);
 }
 
 /* Supply register REGNUM from the buffer specified by GREGS and LEN
@@ -106,16 +221,27 @@ mipsfbsd_supply_gregset (const struct regset *regset,
 			 const void *gregs, size_t len)
 {
   size_t regsize = mips_abi_regsize (get_regcache_arch (regcache));
-  const char *regs = (const char *) gregs;
-  int i;
 
   gdb_assert (len >= MIPSFBSD_NUM_GREGS * regsize);
 
-  for (i = 0; i <= MIPS_PC_REGNUM; i++)
-    {
-      if (regnum == i || regnum == -1)
-	mipsfbsd_supply_reg (regcache, i, regs + i * regsize, regsize);
-    }
+  mipsfbsd_supply_gregs (regcache, regnum, gregs, regsize);
+}
+
+/* Collect register REGNUM from the register cache REGCACHE and store
+   it in the buffer specified by GREGS and LEN in the general-purpose
+   register set REGSET.  If REGNUM is -1, do this for all registers in
+   REGSET.  */
+
+static void
+mipsfbsd_collect_gregset (const struct regset *regset,
+			  const struct regcache *regcache,
+			  int regnum, void *gregs, size_t len)
+{
+  size_t regsize = mips_abi_regsize (get_regcache_arch (regcache));
+
+  gdb_assert (len >= MIPSFBSD_NUM_GREGS * regsize);
+
+  mipsfbsd_collect_gregs (regcache, regnum, gregs, regsize);
 }
 
 /* FreeBSD/mips register sets.  */
@@ -124,12 +250,14 @@ static const struct regset mipsfbsd_gregset =
 {
   NULL,
   mipsfbsd_supply_gregset,
+  mipsfbsd_collect_gregset,
 };
 
 static const struct regset mipsfbsd_fpregset =
 {
   NULL,
   mipsfbsd_supply_fpregset,
+  mipsfbsd_collect_fpregset,
 };
 
 /* Iterate over core file register note sections.  */
@@ -216,7 +344,7 @@ static const struct tramp_frame mipsfbsd_sigframe =
   SIGTRAMP_FRAME,
   MIPS_INSN32_SIZE,
   {
-    { 0x27a40010, -1 },		/* addiu  a0, sp, SIGF_UC */
+    { 0x27a40010, -1 },		/* addiu   a0, sp, SIGF_UC */
     { 0x240201a1, -1 },		/* li      v0, SYS_sigreturn */
     { 0x0000000c, -1 },		/* syscall */
     { 0x0000000d, -1 },		/* break */
