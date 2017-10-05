@@ -1,3 +1,12 @@
+2017-10-09  John Baldwin  <jhb@FreeBSD.org>
+
+	* Makefile.in (ALL_TARGET_OBS): Add arm-fbsd-tdep.o.
+	(ALLDEPFILES): Add arm-fbsd-tdep.c.
+	* NEWS: Mention new FreeBSD/arm target.
+	* configure.tgt: Add arm*-*-freebsd*.
+	* arm-fbsd-tdep.c: New file.
+	* arm-fbsd-tdep.h: New file.
+
 2017-10-09  Pedro Alves  <palves@redhat.com>
 
 	* infrun.c (handle_inferior_event_1) <TARGET_WAITKIND_EXECD>: Skip
