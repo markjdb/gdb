@@ -43,6 +43,10 @@ class amd64_fbsd_nat_target final
 public:
   /* Add some extra features to the common *BSD/amd64 target.  */
   const struct target_desc *read_description () override;
+
+#if defined(HAVE_PT_GETDBREGS) && defined(USE_SIGTRAP_SIGINFO)
+  bool supports_stopped_by_hw_breakpoint () override;
+#endif
 };
 
 static amd64_fbsd_nat_target the_amd64_fbsd_nat_target;
@@ -194,6 +198,16 @@ amd64_fbsd_nat_target::read_description ()
   else
     return i386_target_description (X86_XSTATE_SSE_MASK);
 }
+
+#if defined(HAVE_PT_GETDBREGS) && defined(USE_SIGTRAP_SIGINFO)
+/* Implement the supports_stopped_by_hw_breakpoints method.  */
+
+bool
+amd64_fbsd_nat_target::supports_stopped_by_hw_breakpoint ()
+{
+  return true;
+}
+#endif
 
 void
 _initialize_amd64fbsd_nat (void)
