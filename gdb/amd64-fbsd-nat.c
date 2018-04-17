@@ -198,8 +198,9 @@ amd64_fbsd_nat_target::read_description ()
 void
 _initialize_amd64fbsd_nat (void)
 {
-  struct target_ops *t = &the_amd64_fbsd_nat_target;
   int offset;
+
+  add_inf_child_target (&the_amd64_fbsd_nat_target);
 
   amd64_native_gregset32_reg_offset = amd64fbsd32_r_reg_offset;
   amd64_native_gregset64_reg_offset = amd64fbsd64_r_reg_offset;
