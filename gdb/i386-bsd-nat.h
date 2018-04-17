@@ -35,7 +35,7 @@ public:
   void fetch_registers (struct regcache *regcache, int regnum) override
   { i386bsd_fetch_inferior_registers (regcache, regnum); }
 
-  void store_registers (struct regcache *, int) override
+  void store_registers (struct regcache *regcache, int regnum) override
   { i386bsd_store_inferior_registers (regcache, regnum); }
 };
 
