@@ -139,7 +139,7 @@ i386fbsd_supply_pcb (struct regcache *regcache, struct pcb *pcb)
 /* Implement the read_description method.  */
 
 const struct target_desc *
-i386_fbsd_nat_traget::read_description ()
+i386_fbsd_nat_target::read_description ()
 {
   static int xsave_probed;
   static uint64_t xcr0;
