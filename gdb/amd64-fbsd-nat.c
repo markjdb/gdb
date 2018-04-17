@@ -41,7 +41,7 @@ class amd64_fbsd_nat_target final
   : public amd64_bsd_nat_target<fbsd_nat_target>
 {
 public:
-  /* Add some extra features to the common *BSD/i386 target.  */
+  /* Add some extra features to the common *BSD/amd64 target.  */
   const struct target_desc *read_description () override;
 };
 
