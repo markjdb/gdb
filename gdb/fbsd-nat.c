@@ -46,14 +46,6 @@
 
 #include <list>
 
-#ifdef TRAP_BRKPT
-/* MIPS does not set si_code for SIGTRAP.  sparc64 reports
-   non-standard values in si_code for SIGTRAP.  */
-# if !defined(__mips__) && !defined(__sparc64__)
-#  define USE_SIGTRAP_SIGINFO
-# endif
-#endif
-
 /* Return the name of a file that can be opened to get the symbols for
    the child process identified by PID.  */
 
@@ -261,7 +253,7 @@ fbsd_fetch_kinfo_proc (pid_t pid, struct kinfo_proc *kp)
 
 /* Implement the "info_proc" target_ops method.  */
 
-void
+bool
 fbsd_nat_target::info_proc (const char *args, enum info_proc_what what)
 {
 #ifdef HAVE_KINFO_GETFILE
@@ -377,7 +369,7 @@ fbsd_nat_target::info_proc (const char *args, enum info_proc_what what)
 	}
 #endif
       if (exe == NULL)
-	exe = fbsd_pid_to_exec_file (ops, pid);
+	exe = pid_to_exec_file (pid);
       if (exe != NULL)
 	printf_filtered ("exe = '%s'\n", exe);
       else
@@ -538,6 +530,8 @@ fbsd_nat_target::info_proc (const char *args, enum info_proc_what what)
 	  printf_filtered ("\n");
 	}
     }
+
+  return true;
 }
 
 #ifdef KERN_PROC_AUXV
@@ -1277,7 +1271,7 @@ fbsd_nat_target::wait (ptid_t ptid, struct target_waitstatus *ourstatus,
 	  if (pl.pl_flags & PL_FLAG_EXITED)
 	    {
 	      /* If GDB attaches to a multi-threaded process, exiting
-		 threads might be skipped during fbsd_post_attach that
+		 threads might be skipped during post_attach that
 		 have not yet reported their PL_FLAG_EXITED event.
 		 Ignore EXITED events for an unknown LWP.  */
 	      if (in_thread_list (wptid))
@@ -1407,7 +1401,7 @@ fbsd_nat_target::wait (ptid_t ptid, struct target_waitstatus *ourstatus,
 	    {
 	      ourstatus->kind = TARGET_WAITKIND_EXECD;
 	      ourstatus->value.execd_pathname
-		= xstrdup (fbsd_pid_to_exec_file (NULL, pid));
+		= xstrdup (pid_to_exec_file (pid));
 	      return wptid;
 	    }
 #endif
@@ -1560,16 +1554,16 @@ fbsd_nat_target::remove_vfork_catchpoint (int pid)
 
 /* Implement the "post_startup_inferior" target_ops method.  */
 
-static void
+void
 fbsd_nat_target::post_startup_inferior (ptid_t pid)
 {
   fbsd_enable_proc_events (ptid_get_pid (pid));
 }
 
-/* Implement the "to_post_attach" target_ops method.  */
+/* Implement the "post_attach" target_ops method.  */
 
-static void
-fbsd_post_attach (struct target_ops *self, int pid)
+void
+fbsd_nat_target::post_attach (int pid)
 {
   fbsd_enable_proc_events (pid);
   fbsd_add_threads (pid);
@@ -1585,7 +1579,7 @@ fbsd_nat_target::insert_exec_catchpoint (int pid)
   return 0;
 }
 
-static int
+int
 fbsd_nat_target::remove_exec_catchpoint (int pid)
 {
   return 0;

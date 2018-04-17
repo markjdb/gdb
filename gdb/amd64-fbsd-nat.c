@@ -154,7 +154,7 @@ amd64fbsd_supply_pcb (struct regcache *regcache, struct pcb *pcb)
 /* Implement the read_description method.  */
 
 const struct target_desc *
-amd64_fbsd_nat_target::read_description (struct target_ops *ops)
+amd64_fbsd_nat_target::read_description ()
 {
 #ifdef PT_GETXSTATE_INFO
   static int xsave_probed;

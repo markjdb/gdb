@@ -20,6 +20,16 @@
 #ifndef FBSD_NAT_H
 #define FBSD_NAT_H
 
+#include "inf-ptrace.h"
+
+#ifdef TRAP_BRKPT
+/* MIPS does not set si_code for SIGTRAP.  sparc64 reports
+   non-standard values in si_code for SIGTRAP.  */
+# if !defined(__mips__) && !defined(__sparc64__)
+#  define USE_SIGTRAP_SIGINFO
+# endif
+#endif
+
 /* A prototype FreeBSD target.  */
 
 class fbsd_nat_target : public inf_ptrace_target
